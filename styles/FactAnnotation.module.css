@@ -1,0 +1,147 @@
+.container {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+  padding: 1.5rem;
+  border-radius: 10px;
+  border: 1px solid rgba(128, 128, 128, 0.2);
+  background: rgba(128, 128, 128, 0.04);
+}
+
+.factSection,
+.annotationsSection,
+.addAnnotationSection {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.sectionHeading {
+  font-size: 0.9rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: rgba(128, 128, 128, 0.7);
+  margin: 0;
+}
+
+.factTextarea,
+.annotationInput {
+  width: 100%;
+  padding: 0.75rem;
+  font-size: 0.95rem;
+  font-family: inherit;
+  border: 1px solid rgba(128, 128, 128, 0.3);
+  border-radius: 6px;
+  background: var(--background);
+  color: var(--foreground);
+  resize: vertical;
+  transition: border-color 0.15s ease;
+}
+
+.factTextarea:focus,
+.annotationInput:focus {
+  outline: none;
+  border-color: var(--foreground);
+}
+
+.contextLabel {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: rgba(128, 128, 128, 0.7);
+  margin: 0;
+}
+
+.contextText {
+  font-size: 0.85rem;
+  color: rgba(128, 128, 128, 0.8);
+  font-style: italic;
+  line-height: 1.5;
+  margin: 0;
+}
+
+.annotationsList {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.annotationEntry {
+  padding: 0.75rem;
+  border-radius: 6px;
+  background: rgba(128, 128, 128, 0.06);
+  border: 1px solid rgba(128, 128, 128, 0.1);
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.annotationText {
+  font-size: 0.9rem;
+  margin: 0;
+}
+
+.annotationEditedText {
+  font-size: 0.8rem;
+  color: rgba(128, 128, 128, 0.7);
+  font-style: italic;
+  margin: 0;
+}
+
+.annotationTime {
+  font-size: 0.75rem;
+  color: rgba(128, 128, 128, 0.5);
+}
+
+.noAnnotations {
+  font-size: 0.9rem;
+  color: rgba(128, 128, 128, 0.6);
+  font-style: italic;
+  margin: 0;
+}
+
+.saveRow {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.saveButton {
+  padding: 0.5rem 1.2rem;
+  background: var(--foreground);
+  color: var(--background);
+  border: none;
+  border-radius: 8px;
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: opacity 0.15s ease;
+}
+
+.saveButton:hover:not(:disabled) {
+  opacity: 0.8;
+}
+
+.saveButton:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.statusSaving {
+  font-size: 0.85rem;
+  color: rgba(128, 128, 128, 0.7);
+}
+
+.statusSaved {
+  font-size: 0.85rem;
+  color: #16a34a;
+}
+
+.statusError {
+  font-size: 0.85rem;
+  color: #dc2626;
+}
