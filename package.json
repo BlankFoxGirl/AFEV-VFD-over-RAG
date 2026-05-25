@@ -6,8 +6,8 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "test": "jest",
-    "test:watch": "jest --watch",
+    "test": "NODE_ENV=test jest",
+    "test:watch": "NODE_ENV=test jest --watch",
     "lint": "eslint",
     "format": "prettier --write ."
   },

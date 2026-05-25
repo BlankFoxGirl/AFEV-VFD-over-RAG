@@ -11,6 +11,11 @@ COPY . .
 ENV MONGODB_URI=mongodb://placeholder/appdb
 RUN npm run build
 
+FROM base AS dev
+COPY --from=deps /app/node_modules ./node_modules
+COPY . .
+CMD ["tail", "-f", "/dev/null"]
+
 FROM base AS runner
 ENV NODE_ENV=production
 RUN addgroup --system --gid 1001 nodejs && \
@@ -20,5 +25,5 @@ COPY --from=builder /app/node_modules ./node_modules
 COPY --from=builder /app/package.json ./package.json
 COPY --from=builder /app/public ./public
 USER nextjs
-EXPOSE 3000
+EXPOSE 3001
 CMD ["npm", "start"]

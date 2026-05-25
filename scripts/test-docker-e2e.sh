@@ -3,7 +3,7 @@
 set -euo pipefail
 
 COMPOSE_FILE="${1:-docker-compose.yaml}"
-APP_URL="http://localhost:3000"
+APP_URL="http://localhost:3001"
 MAX_WAIT=120
 WAIT_INTERVAL=3
 
