@@ -9,6 +9,7 @@ const NAV_LINKS = [
   { href: "/extract", label: "Extract" },
   { href: "/facts", label: "Facts" },
   { href: "/verify", label: "Verify" },
+  { href: "/fact-verification", label: "Fact Verification" },
   { href: "/", label: "Chatbot" },
 ] as const;
 
