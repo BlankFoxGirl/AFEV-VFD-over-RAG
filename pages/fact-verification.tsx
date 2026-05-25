@@ -1,4 +1,7 @@
 import Head from "next/head";
+import { useEffect, useState } from "react";
+import { fetchFacts } from "@/lib/apiClient";
+import type { FactWithAnnotations } from "@/lib/contexts/FactsContext";
 import styles from "@/styles/FactVerification.module.css";
 
 function FactsListPlaceholder() {
@@ -13,7 +16,67 @@ function FactsListPlaceholder() {
   );
 }
 
+function LoadingIndicator() {
+  return (
+    <div className={styles.loadingState} role="status" aria-live="polite">
+      Loading facts…
+    </div>
+  );
+}
+
+function ErrorMessage({ message }: { message: string }) {
+  return (
+    <div className={styles.errorState} role="alert">
+      {message}
+    </div>
+  );
+}
+
+function VerificationFactCard({ fact }: { fact: FactWithAnnotations }) {
+  return (
+    <article
+      className={styles.factCard}
+      aria-label={`Fact: ${fact.text}`}
+    >
+      <p className={styles.factCardText}>{fact.text}</p>
+      <p className={styles.factCardContext}>{fact.context}</p>
+      <p className={styles.factCardMeta}>{fact.documentName}</p>
+    </article>
+  );
+}
+
+function FactsGridContent({ facts }: { facts: FactWithAnnotations[] }) {
+  if (facts.length === 0) {
+    return <FactsListPlaceholder />;
+  }
+  return (
+    <>
+      {facts.map((fact) => (
+        <VerificationFactCard key={fact.id} fact={fact} />
+      ))}
+    </>
+  );
+}
+
 export default function FactVerificationPage() {
+  const [facts, setFacts] = useState<FactWithAnnotations[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    fetchFacts()
+      .then((loadedFacts: FactWithAnnotations[]) => {
+        setFacts(loadedFacts);
+        setLoading(false);
+      })
+      .catch((err: unknown) => {
+        const message =
+          err instanceof Error ? err.message : "Failed to load facts";
+        setError(message);
+        setLoading(false);
+      });
+  }, []);
+
   return (
     <>
       <Head>
@@ -31,7 +94,9 @@ export default function FactVerificationPage() {
           Review extracted facts and verify their accuracy.
         </p>
         <div className={styles.factsGrid}>
-          <FactsListPlaceholder />
+          {loading && <LoadingIndicator />}
+          {!loading && error && <ErrorMessage message={error} />}
+          {!loading && !error && <FactsGridContent facts={facts} />}
         </div>
       </div>
     </>
