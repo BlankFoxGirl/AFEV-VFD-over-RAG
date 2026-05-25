@@ -44,7 +44,7 @@ describe("Nav", () => {
     );
     expect(screen.getByRole("link", { name: /chatbot/i })).toHaveAttribute(
       "href",
-      "/chatbot",
+      "/",
     );
   });
 

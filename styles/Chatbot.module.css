@@ -1,0 +1,184 @@
+.container {
+  display: flex;
+  flex-direction: column;
+  height: calc(100vh - 60px);
+  max-width: 800px;
+  margin: 0 auto;
+  padding: 1.5rem 1rem 1rem;
+}
+
+.header {
+  margin-bottom: 1rem;
+}
+
+.title {
+  font-size: 1.5rem;
+  font-weight: 700;
+  margin-bottom: 0.75rem;
+}
+
+.quickLinks {
+  display: flex;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.quickLink {
+  font-size: 0.8rem;
+  font-weight: 500;
+  padding: 0.3rem 0.75rem;
+  border: 1px solid rgba(128, 128, 128, 0.35);
+  border-radius: 999px;
+  transition: background 0.15s ease;
+}
+
+.quickLink:hover {
+  background: rgba(128, 128, 128, 0.1);
+}
+
+.messages {
+  flex: 1;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  padding: 0.5rem 0;
+}
+
+.emptyState {
+  color: rgba(128, 128, 128, 0.8);
+  font-size: 0.9rem;
+  text-align: center;
+  margin-top: 2rem;
+}
+
+.message {
+  max-width: 75%;
+  padding: 0.65rem 1rem;
+  border-radius: 12px;
+  font-size: 0.9rem;
+  line-height: 1.5;
+}
+
+.user {
+  align-self: flex-end;
+  background: var(--foreground);
+  color: var(--background);
+  border-bottom-right-radius: 4px;
+}
+
+.assistant {
+  align-self: flex-start;
+  background: rgba(128, 128, 128, 0.12);
+  border-bottom-left-radius: 4px;
+}
+
+.messageContent {
+  margin: 0;
+}
+
+.badge {
+  display: inline-block;
+  font-size: 0.7rem;
+  font-weight: 600;
+  padding: 0.15rem 0.4rem;
+  border-radius: 4px;
+  margin-top: 0.4rem;
+}
+
+.badgeVerified {
+  background: rgba(34, 197, 94, 0.15);
+  color: #16a34a;
+}
+
+.badgeUnverified {
+  background: rgba(234, 179, 8, 0.15);
+  color: #ca8a04;
+}
+
+.badgeChecking {
+  background: rgba(59, 130, 246, 0.12);
+  color: #2563eb;
+}
+
+.inputForm {
+  display: flex;
+  gap: 0.5rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid rgba(128, 128, 128, 0.2);
+  margin-top: 0.5rem;
+}
+
+.input {
+  flex: 1;
+  padding: 0.6rem 0.9rem;
+  border: 1px solid rgba(128, 128, 128, 0.35);
+  border-radius: 8px;
+  font-size: 0.9rem;
+  background: var(--background);
+  color: var(--foreground);
+  outline: none;
+  transition: border-color 0.15s ease;
+}
+
+.input:focus {
+  border-color: rgba(128, 128, 128, 0.7);
+}
+
+.input:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.sendButton {
+  padding: 0.6rem 1.2rem;
+  background: var(--foreground);
+  color: var(--background);
+  border: none;
+  border-radius: 8px;
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: opacity 0.15s ease;
+}
+
+.sendButton:hover:not(:disabled) {
+  opacity: 0.8;
+}
+
+.sendButton:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+@media (prefers-color-scheme: dark) {
+  .user {
+    background: #ededed;
+    color: #0a0a0a;
+  }
+
+  .assistant {
+    background: rgba(255, 255, 255, 0.08);
+  }
+
+  .badgeVerified {
+    background: rgba(34, 197, 94, 0.2);
+    color: #4ade80;
+  }
+
+  .badgeUnverified {
+    background: rgba(234, 179, 8, 0.2);
+    color: #facc15;
+  }
+
+  .badgeChecking {
+    background: rgba(96, 165, 250, 0.15);
+    color: #60a5fa;
+  }
+}
+
+@media (max-width: 640px) {
+  .message {
+    max-width: 90%;
+  }
+}

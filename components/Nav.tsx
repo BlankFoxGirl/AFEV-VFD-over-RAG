@@ -6,7 +6,7 @@ const NAV_LINKS = [
   { href: "/upload", label: "Upload" },
   { href: "/extract", label: "Extract" },
   { href: "/verify", label: "Verify" },
-  { href: "/chatbot", label: "Chatbot" },
+  { href: "/", label: "Chatbot" },
 ] as const;
 
 function NavLinks({
