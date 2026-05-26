@@ -13,6 +13,7 @@ export interface IFact {
   documentName: string;
   createdAt: Date;
   annotations: IAnnotation[];
+  verificationStatus: "verified" | "unverified" | "none";
 }
 
 export interface IFactDocument extends IFact, Document {}
@@ -33,6 +34,11 @@ const FactSchema = new Schema<IFactDocument>({
   documentName: { type: String, required: true },
   createdAt: { type: Date, default: Date.now },
   annotations: { type: [AnnotationSchema], default: [] },
+  verificationStatus: {
+    type: String,
+    enum: ["verified", "unverified", "none"],
+    default: "none",
+  },
 });
 
 const Fact =

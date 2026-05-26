@@ -5,10 +5,15 @@ jest.mock("@/lib/db", () => jest.fn().mockResolvedValue(undefined));
 jest.mock("@/lib/models/VerifiedFact", () => ({
   find: jest.fn(),
 }));
+jest.mock("@/lib/models/Fact", () => ({
+  findByIdAndUpdate: jest.fn(),
+}));
 
 import VerifiedFact from "@/lib/models/VerifiedFact";
+import Fact from "@/lib/models/Fact";
 
 const mockFind = VerifiedFact.find as jest.Mock;
+const mockFindByIdAndUpdate = Fact.findByIdAndUpdate as jest.Mock;
 
 function createMockRequest(
   method: string,
@@ -35,9 +40,21 @@ function setupMockVerifiedFacts(factTexts: string[]) {
   });
 }
 
+function setupMockFactUpdate(returnValue: unknown) {
+  mockFindByIdAndUpdate.mockReturnValue({
+    lean: jest.fn().mockResolvedValue(returnValue),
+  });
+}
+
 describe("POST /api/verify", () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    jest.spyOn(console, "debug").mockImplementation(() => undefined);
+    jest.spyOn(console, "error").mockImplementation(() => undefined);
+  });
+
+  afterEach(() => {
+    jest.restoreAllMocks();
   });
 
   it("returns 405 for non-POST methods", async () => {
@@ -161,5 +178,108 @@ describe("POST /api/verify", () => {
     const response = json.mock.calls[0][0] as { matchedFact: string; status: string };
     expect(response.matchedFact).toBe("the moon orbits the earth");
     expect(response.status).toBe("verified");
+  });
+
+  it("outputs a console.debug log for every request", async () => {
+    setupMockVerifiedFacts([]);
+    const req = createMockRequest("POST", { text: "some claim" });
+    const { res } = createMockResponse();
+    await handler(req as NextApiRequest, res as NextApiResponse);
+    expect(console.debug).toHaveBeenCalledWith(
+      expect.stringContaining("[verify]"),
+    );
+  });
+
+  it("outputs a console.debug log even for non-POST methods", async () => {
+    const req = createMockRequest("GET", {});
+    const { res } = createMockResponse();
+    await handler(req as NextApiRequest, res as NextApiResponse);
+    expect(console.debug).toHaveBeenCalledWith(
+      expect.stringContaining("[verify]"),
+    );
+  });
+
+  it("logs an error via console.error when the database throws", async () => {
+    mockFind.mockReturnValue({
+      lean: jest.fn().mockRejectedValue(new Error("DB connection failed")),
+    });
+    const req = createMockRequest("POST", { text: "some fact text" });
+    const { res } = createMockResponse();
+    await handler(req as NextApiRequest, res as NextApiResponse);
+    expect(console.error).toHaveBeenCalledWith(
+      expect.stringContaining("[verify]"),
+    );
+  });
+
+  it("updates Fact verificationStatus when valid factId is provided", async () => {
+    setupMockVerifiedFacts(["the sky is blue"]);
+    setupMockFactUpdate({ _id: "fact-abc", verificationStatus: "verified" });
+    const req = createMockRequest("POST", {
+      text: "the sky is blue",
+      factId: "fact-abc",
+    });
+    const { res, status } = createMockResponse();
+    await handler(req as NextApiRequest, res as NextApiResponse);
+    expect(status).toHaveBeenCalledWith(200);
+    expect(mockFindByIdAndUpdate).toHaveBeenCalledWith(
+      "fact-abc",
+      { $set: { verificationStatus: "verified" } },
+      { new: true },
+    );
+  });
+
+  it("updates Fact verificationStatus to 'unverified' for a non-matching fact", async () => {
+    setupMockVerifiedFacts(["the eiffel tower is in paris"]);
+    setupMockFactUpdate({ _id: "fact-xyz", verificationStatus: "unverified" });
+    const req = createMockRequest("POST", {
+      text: "quantum mechanics governs subatomic particles",
+      factId: "fact-xyz",
+    });
+    const { res, status } = createMockResponse();
+    await handler(req as NextApiRequest, res as NextApiResponse);
+    expect(status).toHaveBeenCalledWith(200);
+    expect(mockFindByIdAndUpdate).toHaveBeenCalledWith(
+      "fact-xyz",
+      { $set: { verificationStatus: "unverified" } },
+      { new: true },
+    );
+  });
+
+  it("returns 404 when factId references a non-existent Fact", async () => {
+    setupMockVerifiedFacts(["the sky is blue"]);
+    setupMockFactUpdate(null);
+    const req = createMockRequest("POST", {
+      text: "the sky is blue",
+      factId: "nonexistent-id",
+    });
+    const { res, status, json } = createMockResponse();
+    await handler(req as NextApiRequest, res as NextApiResponse);
+    expect(status).toHaveBeenCalledWith(404);
+    expect(json).toHaveBeenCalledWith(
+      expect.objectContaining({ error: expect.stringContaining("Fact not found") }),
+    );
+  });
+
+  it("does not call Fact.findByIdAndUpdate when no factId is provided", async () => {
+    setupMockVerifiedFacts(["the sun is a star"]);
+    const req = createMockRequest("POST", { text: "the sun is a star" });
+    const { res } = createMockResponse();
+    await handler(req as NextApiRequest, res as NextApiResponse);
+    expect(mockFindByIdAndUpdate).not.toHaveBeenCalled();
+  });
+
+  it("returns 500 when Fact.findByIdAndUpdate throws an unexpected error", async () => {
+    setupMockVerifiedFacts(["water covers 71 percent of the earth"]);
+    mockFindByIdAndUpdate.mockReturnValue({
+      lean: jest.fn().mockRejectedValue(new Error("DB write failure")),
+    });
+    const req = createMockRequest("POST", {
+      text: "water covers 71 percent of the earth",
+      factId: "fact-123",
+    });
+    const { res, status, json } = createMockResponse();
+    await handler(req as NextApiRequest, res as NextApiResponse);
+    expect(status).toHaveBeenCalledWith(500);
+    expect(json).toHaveBeenCalledWith({ error: "Failed to verify fact" });
   });
 });
