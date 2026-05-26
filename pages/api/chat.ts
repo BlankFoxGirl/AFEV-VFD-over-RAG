@@ -1,27 +1,18 @@
 import type { NextApiRequest, NextApiResponse } from "next";
-import {
-  evaluateVerificationStatus,
-  type VerificationStatus,
-} from "@/lib/verification";
+import { type VerificationStatus } from "@/lib/verification";
+import { processMessage } from "@/lib/chatbotService";
 
 type ChatResponse = {
   reply: string;
   verificationStatus: VerificationStatus;
+  matchedFact: string | null;
 };
 
 type ErrorResponse = {
   error: string;
 };
 
-function buildReply(userMessage: string): string {
-  return (
-    `You asked: "${userMessage}". ` +
-    "This is a placeholder response from the FactCheck assistant. " +
-    "Connect an AI service for real fact-checked answers."
-  );
-}
-
-export default function handler(
+export default async function handler(
   req: NextApiRequest,
   res: NextApiResponse<ChatResponse | ErrorResponse>,
 ) {
@@ -29,14 +20,17 @@ export default function handler(
     return res.status(405).json({ error: "Method not allowed" });
   }
 
-  const { message } = req.body as { message?: unknown };
+  const body = req.body as { message?: unknown } | null | undefined;
+  const message = body?.message;
 
   if (!message || typeof message !== "string") {
     return res.status(400).json({ error: "message must be a non-empty string" });
   }
 
-  const reply = buildReply(message);
-  const verificationStatus = evaluateVerificationStatus(reply);
-
-  return res.status(200).json({ reply, verificationStatus });
+  try {
+    const result = await processMessage(message);
+    return res.status(200).json(result);
+  } catch {
+    return res.status(500).json({ error: "Failed to process message" });
+  }
 }

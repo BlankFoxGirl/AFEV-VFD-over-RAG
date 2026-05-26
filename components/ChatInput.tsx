@@ -1,3 +1,5 @@
+"use client";
+
 import { useState, type FormEvent } from "react";
 import styles from "@/styles/Chatbot.module.css";
 

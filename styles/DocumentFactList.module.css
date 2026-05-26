@@ -1,0 +1,90 @@
+.container {
+  margin-top: 2rem;
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 1rem;
+}
+
+.title {
+  font-size: 1.2rem;
+  font-weight: 700;
+}
+
+.extractButton {
+  padding: 0.5rem 1.2rem;
+  background: var(--foreground);
+  color: var(--background);
+  border: none;
+  border-radius: 8px;
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: opacity 0.15s ease;
+}
+
+.extractButton:hover:not(:disabled) {
+  opacity: 0.8;
+}
+
+.extractButton:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.statusContainer {
+  padding: 1rem;
+  border-radius: 8px;
+  background: rgba(128, 128, 128, 0.08);
+  text-align: center;
+}
+
+.loadingText {
+  font-size: 0.9rem;
+  color: rgba(128, 128, 128, 0.8);
+}
+
+.errorText {
+  font-size: 0.9rem;
+  color: #dc2626;
+}
+
+.emptyState {
+  font-size: 0.9rem;
+  color: rgba(128, 128, 128, 0.8);
+  text-align: center;
+  padding: 1.5rem 0;
+}
+
+.factsList {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.factItem {
+  padding: 1rem;
+  border-radius: 8px;
+  border: 1px solid rgba(128, 128, 128, 0.2);
+  background: rgba(128, 128, 128, 0.04);
+}
+
+.factText {
+  font-size: 0.95rem;
+  font-weight: 600;
+  margin: 0 0 0.4rem;
+}
+
+.factContext {
+  font-size: 0.8rem;
+  color: rgba(128, 128, 128, 0.7);
+  margin: 0;
+  line-height: 1.5;
+  font-style: italic;
+}

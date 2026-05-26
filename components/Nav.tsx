@@ -1,11 +1,13 @@
+"use client";
+
 import Link from "next/link";
 import { useState } from "react";
 import styles from "@/styles/Nav.module.css";
 
 const NAV_LINKS = [
-  { href: "/upload", label: "Upload" },
   { href: "/extract", label: "Extract" },
-  { href: "/verify", label: "Verify" },
+  { href: "/facts", label: "Facts" },
+  { href: "/fact-verification", label: "Fact Verification" },
   { href: "/", label: "Chatbot" },
 ] as const;
 

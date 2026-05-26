@@ -30,22 +30,31 @@ describe("Nav", () => {
 
   it("renders all required navigation links", () => {
     render(<Nav />);
-    expect(screen.getByRole("link", { name: /upload/i })).toHaveAttribute(
-      "href",
-      "/upload",
-    );
-    expect(screen.getByRole("link", { name: /extract/i })).toHaveAttribute(
+    expect(screen.getByRole("link", { name: /^extract$/i })).toHaveAttribute(
       "href",
       "/extract",
     );
-    expect(screen.getByRole("link", { name: /verify/i })).toHaveAttribute(
+    expect(screen.getByRole("link", { name: /^facts$/i })).toHaveAttribute(
       "href",
-      "/verify",
+      "/facts",
     );
+    expect(
+      screen.getByRole("link", { name: /fact verification/i }),
+    ).toHaveAttribute("href", "/fact-verification");
     expect(screen.getByRole("link", { name: /chatbot/i })).toHaveAttribute(
       "href",
       "/",
     );
+  });
+
+  it("does not render links to non-existent routes", () => {
+    render(<Nav />);
+    expect(
+      screen.queryByRole("link", { name: /^upload$/i }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("link", { name: /^verify$/i }),
+    ).not.toBeInTheDocument();
   });
 
   it("renders a toggle button for mobile navigation", () => {

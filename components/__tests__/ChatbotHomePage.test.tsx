@@ -42,14 +42,21 @@ describe("ChatbotHomePage", () => {
       expect(nav).toBeInTheDocument();
 
       expect(
-        screen.getByRole("link", { name: /upload documents/i }),
-      ).toHaveAttribute("href", "/upload");
-      expect(
         screen.getByRole("link", { name: /extract facts/i }),
       ).toHaveAttribute("href", "/extract");
       expect(
+        screen.getByRole("link", { name: /browse facts/i }),
+      ).toHaveAttribute("href", "/facts");
+      expect(
         screen.getByRole("link", { name: /verify facts/i }),
-      ).toHaveAttribute("href", "/verify");
+      ).toHaveAttribute("href", "/fact-verification");
+    });
+
+    it("does not render links to non-existent routes", () => {
+      render(<ChatbotHomePage />);
+      expect(
+        screen.queryByRole("link", { name: /upload documents/i }),
+      ).not.toBeInTheDocument();
     });
 
     it("shows the empty-state prompt when no messages exist", () => {
@@ -210,11 +217,20 @@ describe("ChatbotHomePage", () => {
   });
 
   describe("routing integration", () => {
-    it("module links navigate to the correct paths", () => {
+    it("module links navigate to valid existing routes only", () => {
       render(<ChatbotHomePage />);
-      expect(screen.getByRole("link", { name: /upload documents/i })).toHaveAttribute("href", "/upload");
       expect(screen.getByRole("link", { name: /extract facts/i })).toHaveAttribute("href", "/extract");
-      expect(screen.getByRole("link", { name: /verify facts/i })).toHaveAttribute("href", "/verify");
+      expect(screen.getByRole("link", { name: /browse facts/i })).toHaveAttribute("href", "/facts");
+      expect(screen.getByRole("link", { name: /verify facts/i })).toHaveAttribute("href", "/fact-verification");
+    });
+
+    it("does not include links to /upload or /verify which have no pages", () => {
+      render(<ChatbotHomePage />);
+      expect(screen.queryByRole("link", { name: /upload documents/i })).not.toBeInTheDocument();
+      const links = screen.getAllByRole("link");
+      const hrefs = links.map((l) => l.getAttribute("href"));
+      expect(hrefs).not.toContain("/upload");
+      expect(hrefs).not.toContain("/verify");
     });
   });
 });
