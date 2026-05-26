@@ -101,12 +101,19 @@
   color: #2563eb;
 }
 
-.inputForm {
+.inputRow {
   display: flex;
-  gap: 0.5rem;
+  align-items: flex-end;
+  gap: 0.25rem;
   padding-top: 0.75rem;
   border-top: 1px solid rgba(128, 128, 128, 0.2);
   margin-top: 0.5rem;
+}
+
+.inputForm {
+  display: flex;
+  gap: 0.5rem;
+  flex: 1;
 }
 
 .input {

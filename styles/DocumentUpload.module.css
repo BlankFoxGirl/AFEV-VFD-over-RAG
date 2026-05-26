@@ -1,0 +1,61 @@
+.wrapper {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.hiddenInput {
+  display: none;
+}
+
+.attachButton {
+  background: none;
+  border: 1px solid rgba(128, 128, 128, 0.35);
+  border-radius: 8px;
+  padding: 0.5rem 0.6rem;
+  font-size: 1rem;
+  cursor: pointer;
+  line-height: 1;
+  transition: background 0.15s ease;
+  flex-shrink: 0;
+}
+
+.attachButton:hover:not(:disabled) {
+  background: rgba(128, 128, 128, 0.1);
+}
+
+.attachButton:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.statusReading,
+.statusUploading {
+  font-size: 0.78rem;
+  color: #2563eb;
+}
+
+.statusSuccess {
+  font-size: 0.78rem;
+  color: #16a34a;
+}
+
+.statusError {
+  font-size: 0.78rem;
+  color: #dc2626;
+}
+
+@media (prefers-color-scheme: dark) {
+  .statusReading,
+  .statusUploading {
+    color: #60a5fa;
+  }
+
+  .statusSuccess {
+    color: #4ade80;
+  }
+
+  .statusError {
+    color: #f87171;
+  }
+}

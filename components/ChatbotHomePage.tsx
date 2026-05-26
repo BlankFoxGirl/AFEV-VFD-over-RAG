@@ -5,6 +5,7 @@ import Link from "next/link";
 import type { VerificationStatus } from "@/lib/verification";
 import ChatMessage from "@/components/ChatMessage";
 import ChatInput from "@/components/ChatInput";
+import DocumentUpload from "@/components/DocumentUpload";
 import styles from "@/styles/Chatbot.module.css";
 
 export type Message = {
@@ -112,7 +113,10 @@ export default function ChatbotHomePage() {
           <ChatMessage key={message.id} message={message} />
         ))}
       </div>
-      <ChatInput onSend={handleSend} isDisabled={isLoading} />
+      <div className={styles.inputRow}>
+        <DocumentUpload />
+        <ChatInput onSend={handleSend} isDisabled={isLoading} />
+      </div>
     </div>
   );
 }
