@@ -6,6 +6,7 @@ import type { VerificationStatus } from "@/lib/verification";
 import ChatMessage from "@/components/ChatMessage";
 import ChatInput from "@/components/ChatInput";
 import DocumentUpload, { type UploadResult } from "@/components/DocumentUpload";
+import FactDetailModal from "@/components/FactDetailModal";
 import styles from "@/styles/Chatbot.module.css";
 
 export type Message = {
@@ -13,6 +14,7 @@ export type Message = {
   role: "user" | "assistant";
   content: string;
   verificationStatus: VerificationStatus;
+  matchedFact?: string | null;
 };
 
 const MODULE_LINKS = [
@@ -58,7 +60,7 @@ function createUploadNotificationMessage(result: UploadResult): Message {
 
 async function fetchChatResponse(
   message: string,
-): Promise<{ reply: string; verificationStatus: VerificationStatus }> {
+): Promise<{ reply: string; verificationStatus: VerificationStatus; matchedFact: string | null }> {
   const res = await fetch("/api/chat", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -70,6 +72,7 @@ async function fetchChatResponse(
 export default function ChatbotHomePage() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [selectedFactText, setSelectedFactText] = useState<string | null>(null);
 
   const appendMessages = (userMsg: Message, placeholder: Message) =>
     setMessages((prev) => [...prev, userMsg, placeholder]);
@@ -78,11 +81,12 @@ export default function ChatbotHomePage() {
     placeholderId: string,
     content: string,
     verificationStatus: VerificationStatus,
+    matchedFact: string | null,
   ) =>
     setMessages((prev) =>
       prev.map((msg) =>
         msg.id === placeholderId
-          ? { ...msg, content, verificationStatus }
+          ? { ...msg, content, verificationStatus, matchedFact }
           : msg,
       ),
     );
@@ -98,13 +102,14 @@ export default function ChatbotHomePage() {
     setIsLoading(true);
 
     try {
-      const { reply, verificationStatus } = await fetchChatResponse(content);
-      resolveAssistantMessage(placeholder.id, reply, verificationStatus);
+      const { reply, verificationStatus, matchedFact } = await fetchChatResponse(content);
+      resolveAssistantMessage(placeholder.id, reply, verificationStatus, matchedFact ?? null);
     } catch {
       resolveAssistantMessage(
         placeholder.id,
         "An error occurred. Please try again.",
         "none",
+        null,
       );
     } finally {
       setIsLoading(false);
@@ -131,9 +136,19 @@ export default function ChatbotHomePage() {
           </p>
         )}
         {messages.map((message) => (
-          <ChatMessage key={message.id} message={message} />
+          <ChatMessage
+            key={message.id}
+            message={message}
+            onBadgeClick={setSelectedFactText}
+          />
         ))}
       </div>
+      {selectedFactText && (
+        <FactDetailModal
+          factText={selectedFactText}
+          onClose={() => setSelectedFactText(null)}
+        />
+      )}
       <div className={styles.inputRow}>
         <DocumentUpload onUploadComplete={handleUploadComplete} />
         <ChatInput onSend={handleSend} isDisabled={isLoading} />

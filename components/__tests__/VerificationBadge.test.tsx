@@ -1,4 +1,5 @@
 import { render, screen } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import VerificationBadge from "@/components/VerificationBadge";
 import type { VerificationStatus } from "@/lib/verification";
 
@@ -64,5 +65,43 @@ describe("VerificationBadge", () => {
       render(<VerificationBadge status={status} />);
       expect(screen.getByRole("img")).toBeInTheDocument();
     });
+  });
+});
+
+describe("VerificationBadge – clickable variant", () => {
+  it("renders as a button when onClick is provided", () => {
+    render(<VerificationBadge status="verified" onClick={jest.fn()} />);
+    expect(screen.getByRole("button")).toBeInTheDocument();
+  });
+
+  it("does not render role=img when onClick is provided", () => {
+    render(<VerificationBadge status="verified" onClick={jest.fn()} />);
+    expect(screen.queryByRole("img")).not.toBeInTheDocument();
+  });
+
+  it("calls onClick when the badge button is clicked", async () => {
+    const onClick = jest.fn();
+    const user = userEvent.setup();
+    render(<VerificationBadge status="verified" onClick={onClick} />);
+    await user.click(screen.getByRole("button"));
+    expect(onClick).toHaveBeenCalledTimes(1);
+  });
+
+  it("renders the same label text in clickable mode", () => {
+    render(<VerificationBadge status="verified" onClick={jest.fn()} />);
+    expect(screen.getByText(/✓ verified/i)).toBeInTheDocument();
+  });
+
+  it("has an accessible aria-label that mentions click for details", () => {
+    render(<VerificationBadge status="unverified" onClick={jest.fn()} />);
+    expect(
+      screen.getByRole("button", { name: /click for details/i }),
+    ).toBeInTheDocument();
+  });
+
+  it("renders as a non-clickable span when onClick is omitted", () => {
+    render(<VerificationBadge status="verified" />);
+    expect(screen.queryByRole("button")).not.toBeInTheDocument();
+    expect(screen.getByRole("img")).toBeInTheDocument();
   });
 });

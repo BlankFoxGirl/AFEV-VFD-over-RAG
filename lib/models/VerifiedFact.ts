@@ -4,6 +4,7 @@ export interface IVerifiedFact {
   text: string;
   category: string;
   source: string;
+  notes: string | null;
   createdAt: Date;
 }
 
@@ -13,6 +14,7 @@ const VerifiedFactSchema = new Schema<IVerifiedFactDocument>({
   text: { type: String, required: true, index: true },
   category: { type: String, required: true },
   source: { type: String, required: true },
+  notes: { type: String, default: null },
   createdAt: { type: Date, default: Date.now },
 });
 

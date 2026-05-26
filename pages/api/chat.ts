@@ -5,6 +5,7 @@ import { processMessage } from "@/lib/chatbotService";
 type ChatResponse = {
   reply: string;
   verificationStatus: VerificationStatus;
+  matchedFact: string | null;
 };
 
 type ErrorResponse = {

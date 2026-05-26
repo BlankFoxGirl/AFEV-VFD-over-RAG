@@ -3,6 +3,7 @@ import styles from "@/styles/Chatbot.module.css";
 
 type Props = {
   status: VerificationStatus;
+  onClick?: () => void;
 };
 
 const STATUS_LABEL: Record<VerificationStatus, string> = {
@@ -26,8 +27,20 @@ const STATUS_CLASS: Record<VerificationStatus, string> = {
   none: "",
 };
 
-export default function VerificationBadge({ status }: Props) {
-  if (status === "none") return null;
+function ClickableBadge({ status, onClick }: Required<Props>) {
+  return (
+    <button
+      type="button"
+      className={`${styles.badge} ${styles.badgeButton} ${STATUS_CLASS[status]}`}
+      aria-label={`${STATUS_ARIA_LABEL[status]} – click for details`}
+      onClick={onClick}
+    >
+      {STATUS_LABEL[status]}
+    </button>
+  );
+}
+
+function StaticBadge({ status }: { status: VerificationStatus }) {
   return (
     <span
       className={`${styles.badge} ${STATUS_CLASS[status]}`}
@@ -38,4 +51,10 @@ export default function VerificationBadge({ status }: Props) {
       {STATUS_LABEL[status]}
     </span>
   );
+}
+
+export default function VerificationBadge({ status, onClick }: Props) {
+  if (status === "none") return null;
+  if (onClick) return <ClickableBadge status={status} onClick={onClick} />;
+  return <StaticBadge status={status} />;
 }
