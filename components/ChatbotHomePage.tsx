@@ -5,7 +5,7 @@ import Link from "next/link";
 import type { VerificationStatus } from "@/lib/verification";
 import ChatMessage from "@/components/ChatMessage";
 import ChatInput from "@/components/ChatInput";
-import DocumentUpload from "@/components/DocumentUpload";
+import DocumentUpload, { type UploadResult } from "@/components/DocumentUpload";
 import styles from "@/styles/Chatbot.module.css";
 
 export type Message = {
@@ -39,6 +39,23 @@ function createAssistantPlaceholder(): Message {
   };
 }
 
+function buildUploadSummaryText(result: UploadResult): string {
+  const factLabel = result.factCount !== 1 ? "facts" : "fact";
+  const base = `Document "${result.documentName}" processed: ${result.factCount} ${factLabel} extracted`;
+  if (!result.verificationSummary) return `${base}.`;
+  const { verified, unverified } = result.verificationSummary;
+  return `${base} (${verified} verified, ${unverified} unverified).`;
+}
+
+function createUploadNotificationMessage(result: UploadResult): Message {
+  return {
+    id: crypto.randomUUID(),
+    role: "assistant",
+    content: buildUploadSummaryText(result),
+    verificationStatus: "none",
+  };
+}
+
 async function fetchChatResponse(
   message: string,
 ): Promise<{ reply: string; verificationStatus: VerificationStatus }> {
@@ -69,6 +86,10 @@ export default function ChatbotHomePage() {
           : msg,
       ),
     );
+
+  const handleUploadComplete = (result: UploadResult) => {
+    setMessages((prev) => [...prev, createUploadNotificationMessage(result)]);
+  };
 
   const handleSend = async (content: string) => {
     const userMsg = createUserMessage(content);
@@ -114,7 +135,7 @@ export default function ChatbotHomePage() {
         ))}
       </div>
       <div className={styles.inputRow}>
-        <DocumentUpload />
+        <DocumentUpload onUploadComplete={handleUploadComplete} />
         <ChatInput onSend={handleSend} isDisabled={isLoading} />
       </div>
     </div>

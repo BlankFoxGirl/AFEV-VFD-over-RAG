@@ -1,7 +1,8 @@
 import type { NextApiRequest, NextApiResponse } from "next";
-import connectToDatabase from "@/lib/db";
-import Fact from "@/lib/models/Fact";
-import { extractFacts } from "@/lib/factExtraction";
+import {
+  processUploadedDocument,
+  type VerificationSummary,
+} from "@/lib/documentProcessor";
 
 type UploadRequest = {
   fileName: string;
@@ -12,6 +13,7 @@ export type UploadSuccessResponse = {
   documentId: string;
   documentName: string;
   factCount: number;
+  verificationSummary: VerificationSummary;
 };
 
 type ErrorResponse = {
@@ -33,18 +35,6 @@ function isValidUploadRequest(body: unknown): body is UploadRequest {
   );
 }
 
-async function persistExtractedFacts(
-  documentId: string,
-  documentName: string,
-  content: string,
-): Promise<number> {
-  const facts = extractFacts(content, documentId);
-  if (facts.length > 0) {
-    await Fact.insertMany(facts.map((fact) => ({ ...fact, documentName })));
-  }
-  return facts.length;
-}
-
 export default async function handler(
   req: NextApiRequest,
   res: NextApiResponse<UploadSuccessResponse | ErrorResponse>,
@@ -62,10 +52,15 @@ export default async function handler(
   const { fileName, content } = req.body;
 
   try {
-    await connectToDatabase();
     const documentId = generateDocumentId();
-    const factCount = await persistExtractedFacts(documentId, fileName, content);
-    return res.status(200).json({ documentId, documentName: fileName, factCount });
+    const { factCount, verificationSummary } = await processUploadedDocument(
+      documentId,
+      fileName,
+      content,
+    );
+    return res
+      .status(200)
+      .json({ documentId, documentName: fileName, factCount, verificationSummary });
   } catch {
     return res.status(500).json({ error: "Failed to process document" });
   }

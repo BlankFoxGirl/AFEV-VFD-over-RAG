@@ -210,6 +210,7 @@ describe("E2E – complete upload and processing cycle", () => {
       documentId: "doc_earth",
       documentName: "science.txt",
       factCount: 4,
+      verificationSummary: { verified: 3, unverified: 1 },
     });
 
     mockFetch.mockResolvedValueOnce({
@@ -245,6 +246,54 @@ describe("E2E – complete upload and processing cycle", () => {
     await waitFor(() =>
       expect(
         screen.getByText("Water covers 71% of Earth's surface."),
+      ).toBeInTheDocument(),
+    );
+  });
+
+  it("shows a chat notification with verification summary after upload completes", async () => {
+    mockUploadDocument.mockResolvedValueOnce({
+      documentId: "doc_notify",
+      documentName: "report.txt",
+      factCount: 3,
+      verificationSummary: { verified: 2, unverified: 1 },
+    });
+
+    const user = userEvent.setup();
+    render(<ChatbotHomePage />);
+
+    await user.upload(
+      screen.getByTestId("file-input"),
+      createTextFile("report.txt", "The river stretches 3000 km. It was discovered in 1492."),
+    );
+
+    await waitFor(() =>
+      expect(
+        screen.getByText(/document "report\.txt" processed/i),
+      ).toBeInTheDocument(),
+    );
+
+    expect(screen.getByText(/2 verified/i)).toBeInTheDocument();
+    expect(screen.getByText(/1 unverified/i)).toBeInTheDocument();
+  });
+
+  it("shows chat notification without verification counts when summary is absent", async () => {
+    mockUploadDocument.mockResolvedValueOnce({
+      documentId: "doc_nosummary",
+      documentName: "legacy.txt",
+      factCount: 2,
+    });
+
+    const user = userEvent.setup();
+    render(<ChatbotHomePage />);
+
+    await user.upload(
+      screen.getByTestId("file-input"),
+      createTextFile("legacy.txt", "The Earth orbits the Sun."),
+    );
+
+    await waitFor(() =>
+      expect(
+        screen.getByText(/document "legacy\.txt" processed/i),
       ).toBeInTheDocument(),
     );
   });

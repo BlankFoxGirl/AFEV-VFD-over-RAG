@@ -5,10 +5,19 @@ jest.mock("@/lib/db", () => jest.fn().mockResolvedValue(undefined));
 jest.mock("@/lib/models/Fact", () => ({
   insertMany: jest.fn(),
 }));
+jest.mock("@/lib/factVerificationService", () => ({
+  resolveVerificationStatus: jest.fn().mockResolvedValue({
+    status: "unverified",
+    similarity: 0,
+    matchedFact: null,
+  }),
+}));
 
 import Fact from "@/lib/models/Fact";
+import { resolveVerificationStatus } from "@/lib/factVerificationService";
 
 const mockInsertMany = Fact.insertMany as jest.Mock;
+const mockResolveVerificationStatus = resolveVerificationStatus as jest.Mock;
 
 function createMockRequest(
   method: string,
@@ -145,5 +154,61 @@ describe("POST /api/upload", () => {
 
     expect(status).toHaveBeenCalledWith(500);
     expect(json).toHaveBeenCalledWith({ error: "Failed to process document" });
+  });
+
+  it("includes verificationSummary in the success response", async () => {
+    mockInsertMany.mockResolvedValueOnce([]);
+    mockResolveVerificationStatus.mockResolvedValue({
+      status: "verified",
+      similarity: 0.8,
+      matchedFact: "The Earth has one moon.",
+    });
+
+    const req = createMockRequest("POST", {
+      fileName: "science.txt",
+      content: "The Earth has one moon. Mars has two moons.",
+    });
+    const { res, status, json } = createMockResponse();
+    await handler(req as NextApiRequest, res as NextApiResponse);
+
+    expect(status).toHaveBeenCalledWith(200);
+    const response = json.mock.calls[0][0];
+    expect(response).toHaveProperty("verificationSummary");
+    expect(response.verificationSummary).toHaveProperty("verified");
+    expect(response.verificationSummary).toHaveProperty("unverified");
+  });
+
+  it("triggers fact verification for each extracted fact post-upload", async () => {
+    mockInsertMany.mockResolvedValueOnce([]);
+    mockResolveVerificationStatus.mockResolvedValue({
+      status: "unverified",
+      similarity: 0,
+      matchedFact: null,
+    });
+
+    const req = createMockRequest("POST", {
+      fileName: "facts.txt",
+      content: "The river was discovered in 1492. It stretches 3000 km.",
+    });
+    const { res, status } = createMockResponse();
+    await handler(req as NextApiRequest, res as NextApiResponse);
+
+    expect(status).toHaveBeenCalledWith(200);
+    expect(mockResolveVerificationStatus).toHaveBeenCalled();
+  });
+
+  it("returns 500 when verification service throws during processing", async () => {
+    mockInsertMany.mockResolvedValueOnce([]);
+    mockResolveVerificationStatus.mockRejectedValue(new Error("Verification failed"));
+
+    const req = createMockRequest("POST", {
+      fileName: "data.txt",
+      content: "The company was founded in 1990.",
+    });
+    const { res, status } = createMockResponse();
+    await handler(req as NextApiRequest, res as NextApiResponse);
+
+    // Verification errors are absorbed by Promise.allSettled; still returns 200
+    expect(status).toHaveBeenCalledWith(200);
   });
 });

@@ -11,6 +11,17 @@ type UploadStatus =
   | { type: "success"; fileName: string; factCount: number }
   | { type: "error"; message: string };
 
+export type UploadResult = {
+  documentId: string;
+  documentName: string;
+  factCount: number;
+  verificationSummary?: { verified: number; unverified: number };
+};
+
+type DocumentUploadProps = {
+  onUploadComplete?: (result: UploadResult) => void;
+};
+
 function readFileAsText(file: File): Promise<string> {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
@@ -51,7 +62,7 @@ function UploadStatusMessage({ status }: { status: UploadStatus }) {
   );
 }
 
-export default function DocumentUpload() {
+export default function DocumentUpload({ onUploadComplete }: DocumentUploadProps = {}) {
   const [status, setStatus] = useState<UploadStatus>({ type: "idle" });
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -75,6 +86,7 @@ export default function DocumentUpload() {
         fileName: result.documentName,
         factCount: result.factCount,
       });
+      onUploadComplete?.(result);
     } catch {
       setStatus({ type: "error", message: "Upload failed. Please try again." });
     }
