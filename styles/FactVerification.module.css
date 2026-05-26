@@ -98,3 +98,40 @@
   color: rgba(128, 128, 128, 0.6);
   margin: 0;
 }
+
+.factCardFooter {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  margin-top: 0.25rem;
+}
+
+.verifyButton {
+  font-size: 0.78rem;
+  font-weight: 600;
+  padding: 0.3rem 0.75rem;
+  border: 1px solid rgba(128, 128, 128, 0.35);
+  border-radius: 6px;
+  background: transparent;
+  cursor: pointer;
+  transition: background 0.15s ease, opacity 0.15s ease;
+  white-space: nowrap;
+  color: inherit;
+}
+
+.verifyButton:hover:not(:disabled) {
+  background: rgba(128, 128, 128, 0.1);
+}
+
+.verifyButton:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.factError {
+  font-size: 0.8rem;
+  color: #dc3545;
+  margin: 0;
+  padding: 0.25rem 0;
+}

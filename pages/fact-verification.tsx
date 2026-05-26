@@ -1,8 +1,13 @@
 import Head from "next/head";
-import { useEffect, useState } from "react";
-import { fetchFacts } from "@/lib/apiClient";
+import { useEffect, useState, useCallback } from "react";
+import { fetchFacts, verifyFact } from "@/lib/apiClient";
 import type { FactWithAnnotations } from "@/lib/contexts/FactsContext";
+import type { VerificationStatus } from "@/lib/verification";
+import VerificationBadge from "@/components/VerificationBadge";
 import styles from "@/styles/FactVerification.module.css";
+
+type FactStatusMap = Record<string, VerificationStatus>;
+type FactErrorMap = Record<string, string | null>;
 
 function FactsListPlaceholder() {
   return (
@@ -32,7 +37,16 @@ function ErrorMessage({ message }: { message: string }) {
   );
 }
 
-function VerificationFactCard({ fact }: { fact: FactWithAnnotations }) {
+type FactCardProps = {
+  fact: FactWithAnnotations;
+  status: VerificationStatus;
+  error: string | null;
+  onVerify: (fact: FactWithAnnotations) => void;
+};
+
+function VerificationFactCard({ fact, status, error, onVerify }: FactCardProps) {
+  const isChecking = status === "checking";
+
   return (
     <article
       className={styles.factCard}
@@ -41,18 +55,47 @@ function VerificationFactCard({ fact }: { fact: FactWithAnnotations }) {
       <p className={styles.factCardText}>{fact.text}</p>
       <p className={styles.factCardContext}>{fact.context}</p>
       <p className={styles.factCardMeta}>{fact.documentName}</p>
+      {error && (
+        <p className={styles.factError} role="alert">
+          {error}
+        </p>
+      )}
+      <div className={styles.factCardFooter}>
+        <VerificationBadge status={status} />
+        <button
+          className={styles.verifyButton}
+          onClick={() => onVerify(fact)}
+          disabled={isChecking}
+          aria-label={`Verify fact: ${fact.text}`}
+        >
+          {isChecking ? "Verifying…" : "Verify"}
+        </button>
+      </div>
     </article>
   );
 }
 
-function FactsGridContent({ facts }: { facts: FactWithAnnotations[] }) {
+type FactsGridContentProps = {
+  facts: FactWithAnnotations[];
+  statuses: FactStatusMap;
+  errors: FactErrorMap;
+  onVerify: (fact: FactWithAnnotations) => void;
+};
+
+function FactsGridContent({ facts, statuses, errors, onVerify }: FactsGridContentProps) {
   if (facts.length === 0) {
     return <FactsListPlaceholder />;
   }
   return (
     <>
       {facts.map((fact) => (
-        <VerificationFactCard key={fact.id} fact={fact} />
+        <VerificationFactCard
+          key={fact.id}
+          fact={fact}
+          status={statuses[fact.id] ?? "none"}
+          error={errors[fact.id] ?? null}
+          onVerify={onVerify}
+        />
       ))}
     </>
   );
@@ -62,6 +105,8 @@ export default function FactVerificationPage() {
   const [facts, setFacts] = useState<FactWithAnnotations[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [factStatuses, setFactStatuses] = useState<FactStatusMap>({});
+  const [factErrors, setFactErrors] = useState<FactErrorMap>({});
 
   useEffect(() => {
     fetchFacts()
@@ -76,6 +121,31 @@ export default function FactVerificationPage() {
         setLoading(false);
       });
   }, []);
+
+  const setFactStatus = useCallback((id: string, status: VerificationStatus) => {
+    setFactStatuses((prev) => ({ ...prev, [id]: status }));
+  }, []);
+
+  const setFactError = useCallback((id: string, message: string | null) => {
+    setFactErrors((prev) => ({ ...prev, [id]: message }));
+  }, []);
+
+  const handleVerifyFact = useCallback(
+    async (fact: FactWithAnnotations) => {
+      setFactStatus(fact.id, "checking");
+      setFactError(fact.id, null);
+      try {
+        const result = await verifyFact(fact.text);
+        setFactStatus(fact.id, result.status as VerificationStatus);
+      } catch (err) {
+        const message =
+          err instanceof Error ? err.message : "Verification failed. Please try again.";
+        setFactError(fact.id, message);
+        setFactStatus(fact.id, "none");
+      }
+    },
+    [setFactStatus, setFactError],
+  );
 
   return (
     <>
@@ -96,7 +166,14 @@ export default function FactVerificationPage() {
         <div className={styles.factsGrid}>
           {loading && <LoadingIndicator />}
           {!loading && error && <ErrorMessage message={error} />}
-          {!loading && !error && <FactsGridContent facts={facts} />}
+          {!loading && !error && (
+            <FactsGridContent
+              facts={facts}
+              statuses={factStatuses}
+              errors={factErrors}
+              onVerify={handleVerifyFact}
+            />
+          )}
         </div>
       </div>
     </>

@@ -1,4 +1,4 @@
-import { render, screen, waitFor, act } from "@testing-library/react";
+import { render, screen, waitFor, act, fireEvent } from "@testing-library/react";
 import FactVerificationPage from "@/pages/fact-verification";
 import type { FactWithAnnotations } from "@/lib/contexts/FactsContext";
 
@@ -12,11 +12,13 @@ jest.mock("next/head", () => {
 
 jest.mock("@/lib/apiClient", () => ({
   fetchFacts: jest.fn(),
+  verifyFact: jest.fn(),
 }));
 
-import { fetchFacts } from "@/lib/apiClient";
+import { fetchFacts, verifyFact } from "@/lib/apiClient";
 
 const mockFetchFacts = fetchFacts as jest.Mock;
+const mockVerifyFact = verifyFact as jest.Mock;
 
 const SAMPLE_FACTS: FactWithAnnotations[] = [
   {
@@ -40,6 +42,7 @@ const SAMPLE_FACTS: FactWithAnnotations[] = [
 describe("FactVerificationPage", () => {
   beforeEach(() => {
     mockFetchFacts.mockClear();
+    mockVerifyFact.mockClear();
   });
 
   it("renders without error", async () => {
@@ -151,5 +154,120 @@ describe("FactVerificationPage", () => {
     render(<FactVerificationPage />);
     await waitFor(() => expect(mockFetchFacts).toHaveBeenCalledTimes(1));
     expect(mockFetchFacts).toHaveBeenCalledWith();
+  });
+
+  it("renders a Verify button for each fact card", async () => {
+    mockFetchFacts.mockResolvedValueOnce(SAMPLE_FACTS);
+    render(<FactVerificationPage />);
+    await waitFor(() =>
+      expect(screen.getByText("The bridge was built in 1920.")).toBeInTheDocument(),
+    );
+    const verifyButtons = screen.getAllByRole("button", { name: /verify fact/i });
+    expect(verifyButtons).toHaveLength(SAMPLE_FACTS.length);
+  });
+
+  it("shows 'Verifying…' label and disables button while checking", async () => {
+    mockFetchFacts.mockResolvedValueOnce(SAMPLE_FACTS);
+    mockVerifyFact.mockReturnValueOnce(new Promise(() => {}));
+
+    render(<FactVerificationPage />);
+    await waitFor(() =>
+      expect(screen.getByText("The bridge was built in 1920.")).toBeInTheDocument(),
+    );
+
+    const [firstButton] = screen.getAllByRole("button", { name: /verify fact/i });
+    fireEvent.click(firstButton);
+
+    await waitFor(() =>
+      expect(screen.getByText("Verifying…")).toBeInTheDocument(),
+    );
+    expect(firstButton).toBeDisabled();
+  });
+
+  it("shows 'verified' badge after successful verification with verified status", async () => {
+    mockFetchFacts.mockResolvedValueOnce(SAMPLE_FACTS);
+    mockVerifyFact.mockResolvedValueOnce({ status: "verified", similarity: 1, matchedFact: "The bridge was built in 1920." });
+
+    render(<FactVerificationPage />);
+    await waitFor(() =>
+      expect(screen.getByText("The bridge was built in 1920.")).toBeInTheDocument(),
+    );
+
+    const [firstButton] = screen.getAllByRole("button", { name: /verify fact/i });
+    await act(async () => { fireEvent.click(firstButton); });
+
+    await waitFor(() =>
+      expect(screen.getByRole("img", { name: /fact verification status: verified/i })).toBeInTheDocument(),
+    );
+  });
+
+  it("shows 'unverified' badge after verification returns unverified status", async () => {
+    mockFetchFacts.mockResolvedValueOnce(SAMPLE_FACTS);
+    mockVerifyFact.mockResolvedValueOnce({ status: "unverified", similarity: 0, matchedFact: null });
+
+    render(<FactVerificationPage />);
+    await waitFor(() =>
+      expect(screen.getByText("The bridge was built in 1920.")).toBeInTheDocument(),
+    );
+
+    const [firstButton] = screen.getAllByRole("button", { name: /verify fact/i });
+    await act(async () => { fireEvent.click(firstButton); });
+
+    await waitFor(() =>
+      expect(screen.getByRole("img", { name: /fact verification status: unverified/i })).toBeInTheDocument(),
+    );
+  });
+
+  it("shows a per-fact error message when verification fails", async () => {
+    mockFetchFacts.mockResolvedValueOnce(SAMPLE_FACTS);
+    mockVerifyFact.mockRejectedValueOnce(new Error("Network failure"));
+
+    render(<FactVerificationPage />);
+    await waitFor(() =>
+      expect(screen.getByText("The bridge was built in 1920.")).toBeInTheDocument(),
+    );
+
+    const [firstButton] = screen.getAllByRole("button", { name: /verify fact/i });
+    await act(async () => { fireEvent.click(firstButton); });
+
+    await waitFor(() =>
+      expect(screen.getByText("Network failure")).toBeInTheDocument(),
+    );
+  });
+
+  it("re-enables Verify button after verification completes", async () => {
+    mockFetchFacts.mockResolvedValueOnce(SAMPLE_FACTS);
+    mockVerifyFact.mockResolvedValueOnce({ status: "verified", similarity: 1, matchedFact: "The bridge was built in 1920." });
+
+    render(<FactVerificationPage />);
+    await waitFor(() =>
+      expect(screen.getByText("The bridge was built in 1920.")).toBeInTheDocument(),
+    );
+
+    const [firstButton] = screen.getAllByRole("button", { name: /verify fact/i });
+    await act(async () => { fireEvent.click(firstButton); });
+
+    await waitFor(() => expect(firstButton).not.toBeDisabled());
+  });
+
+  it("only updates the status of the clicked fact, not others", async () => {
+    mockFetchFacts.mockResolvedValueOnce(SAMPLE_FACTS);
+    mockVerifyFact.mockResolvedValueOnce({ status: "verified", similarity: 1, matchedFact: SAMPLE_FACTS[0].text });
+
+    render(<FactVerificationPage />);
+    await waitFor(() =>
+      expect(screen.getByText("The bridge was built in 1920.")).toBeInTheDocument(),
+    );
+
+    const buttons = screen.getAllByRole("button", { name: /verify fact/i });
+    await act(async () => { fireEvent.click(buttons[0]); });
+
+    await waitFor(() =>
+      expect(screen.getByRole("img", { name: /fact verification status: verified/i })).toBeInTheDocument(),
+    );
+
+    expect(
+      screen.queryByRole("img", { name: /fact verification status: unverified/i }),
+    ).not.toBeInTheDocument();
   });
 });
