@@ -1,11 +1,34 @@
 jest.mock("@/lib/factVerificationService", () => ({
   resolveVerificationStatus: jest.fn(),
+  fetchVerifiedFactTexts: jest.fn(),
 }));
 
-import { buildBaseReply, appendStatusFlag, processMessage } from "@/lib/chatbotService";
-import { resolveVerificationStatus } from "@/lib/factVerificationService";
+jest.mock("@/lib/openaiClient", () => ({
+  fetchChatCompletion: jest.fn(),
+  buildChatMessages: jest.fn((userMessage, systemPrompt) => [
+    { role: "system", content: systemPrompt },
+    { role: "user", content: userMessage },
+  ]),
+}));
+
+jest.mock("@/lib/embeddingService", () => ({
+  generateEmbeddingContext: jest.fn(),
+}));
+
+import {
+  buildBaseReply,
+  appendStatusFlag,
+  buildSystemPrompt,
+  processMessage,
+} from "@/lib/chatbotService";
+import { resolveVerificationStatus, fetchVerifiedFactTexts } from "@/lib/factVerificationService";
+import { fetchChatCompletion } from "@/lib/openaiClient";
+import { generateEmbeddingContext } from "@/lib/embeddingService";
 
 const mockResolveVerificationStatus = resolveVerificationStatus as jest.Mock;
+const mockFetchVerifiedFactTexts = fetchVerifiedFactTexts as jest.Mock;
+const mockFetchChatCompletion = fetchChatCompletion as jest.Mock;
+const mockGenerateEmbeddingContext = generateEmbeddingContext as jest.Mock;
 
 describe("buildBaseReply", () => {
   it("includes the user message in the reply", () => {
@@ -53,30 +76,56 @@ describe("appendStatusFlag", () => {
   });
 });
 
+describe("buildSystemPrompt", () => {
+  it("returns a base prompt when no embedding context is provided", () => {
+    const prompt = buildSystemPrompt("");
+    expect(prompt.length).toBeGreaterThan(0);
+  });
+
+  it("includes the embedding context when provided", () => {
+    const context = "Verified facts for context:\nWater boils at 100°C";
+    const prompt = buildSystemPrompt(context);
+    expect(prompt).toContain(context);
+  });
+
+  it("returns only the base prompt when context is empty string", () => {
+    const basePrompt = buildSystemPrompt("");
+    const promptWithContext = buildSystemPrompt("some context");
+    expect(promptWithContext.length).toBeGreaterThan(basePrompt.length);
+  });
+});
+
 describe("processMessage", () => {
   beforeEach(() => {
     jest.clearAllMocks();
   });
 
-  it("returns reply with [Verified] flag when verification status is verified", async () => {
+  function setupVerification(status: string) {
     mockResolveVerificationStatus.mockResolvedValue({
-      status: "verified",
+      status,
       similarity: 1,
-      matchedFact: "water is wet",
+      matchedFact: null,
     });
+  }
 
-    const result = await processMessage("water is wet");
+  it("returns reply from ChatGPT with [Verified] flag when verification is verified", async () => {
+    setupVerification("verified");
+    mockFetchVerifiedFactTexts.mockResolvedValue(["water is H2O"]);
+    mockGenerateEmbeddingContext.mockResolvedValue("Verified facts for context:\nwater is H2O");
+    mockFetchChatCompletion.mockResolvedValue("Water is the molecule H2O.");
+
+    const result = await processMessage("What is water?");
 
     expect(result.reply).toContain("[Verified]");
+    expect(result.reply).toContain("Water is the molecule H2O.");
     expect(result.verificationStatus).toBe("verified");
   });
 
-  it("returns reply with [Unverified] flag when verification status is unverified", async () => {
-    mockResolveVerificationStatus.mockResolvedValue({
-      status: "unverified",
-      similarity: 0,
-      matchedFact: null,
-    });
+  it("returns ChatGPT reply with [Unverified] flag when verification is unverified", async () => {
+    setupVerification("unverified");
+    mockFetchVerifiedFactTexts.mockResolvedValue([]);
+    mockGenerateEmbeddingContext.mockResolvedValue("");
+    mockFetchChatCompletion.mockResolvedValue("I am not sure about that claim.");
 
     const result = await processMessage("unknown claim");
 
@@ -84,24 +133,34 @@ describe("processMessage", () => {
     expect(result.verificationStatus).toBe("unverified");
   });
 
-  it("includes the user message content in the reply", async () => {
-    mockResolveVerificationStatus.mockResolvedValue({
-      status: "verified",
-      similarity: 0.8,
-      matchedFact: "the sun is a star",
-    });
+  it("falls back to buildBaseReply when ChatGPT throws an error", async () => {
+    setupVerification("unverified");
+    mockFetchVerifiedFactTexts.mockResolvedValue([]);
+    mockGenerateEmbeddingContext.mockResolvedValue("");
+    mockFetchChatCompletion.mockRejectedValue(new Error("API rate limit"));
 
-    const result = await processMessage("the sun is a star");
+    const result = await processMessage("some question");
 
-    expect(result.reply).toContain("the sun is a star");
+    expect(result.reply).toContain("some question");
+    expect(result).toHaveProperty("verificationStatus");
+  });
+
+  it("calls fetchVerifiedFactTexts to build embedding context", async () => {
+    setupVerification("verified");
+    mockFetchVerifiedFactTexts.mockResolvedValue(["the sun is a star"]);
+    mockGenerateEmbeddingContext.mockResolvedValue("Verified facts for context:\nthe sun is a star");
+    mockFetchChatCompletion.mockResolvedValue("Yes, the sun is a star.");
+
+    await processMessage("Is the sun a star?");
+
+    expect(mockFetchVerifiedFactTexts).toHaveBeenCalled();
   });
 
   it("returns both reply and verificationStatus fields", async () => {
-    mockResolveVerificationStatus.mockResolvedValue({
-      status: "unverified",
-      similarity: 0,
-      matchedFact: null,
-    });
+    setupVerification("unverified");
+    mockFetchVerifiedFactTexts.mockResolvedValue([]);
+    mockGenerateEmbeddingContext.mockResolvedValue("");
+    mockFetchChatCompletion.mockResolvedValue("Some reply.");
 
     const result = await processMessage("some message");
 
@@ -109,15 +168,16 @@ describe("processMessage", () => {
     expect(result).toHaveProperty("verificationStatus");
   });
 
-  it("calls resolveVerificationStatus with the user message", async () => {
-    mockResolveVerificationStatus.mockResolvedValue({
-      status: "verified",
-      similarity: 1,
-      matchedFact: null,
-    });
+  it("passes the embedding context to ChatGPT for contextual responses", async () => {
+    setupVerification("verified");
+    const facts = ["Mars is the fourth planet"];
+    const embeddingContext = "Verified facts for context:\nMars is the fourth planet";
+    mockFetchVerifiedFactTexts.mockResolvedValue(facts);
+    mockGenerateEmbeddingContext.mockResolvedValue(embeddingContext);
+    mockFetchChatCompletion.mockResolvedValue("Mars is indeed the fourth planet.");
 
-    await processMessage("hello");
+    await processMessage("Tell me about Mars.");
 
-    expect(mockResolveVerificationStatus).toHaveBeenCalledWith("hello");
+    expect(mockGenerateEmbeddingContext).toHaveBeenCalledWith("Tell me about Mars.", facts);
   });
 });
