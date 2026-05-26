@@ -48,10 +48,16 @@ describe("RootLayout", () => {
         <section aria-label="page body">content</section>
       </RootLayout>,
     );
-    expect(screen.getByRole("link", { name: /upload/i })).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: /extract/i })).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: /verify/i })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: /^extract$/i })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: /^facts$/i })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: /fact verification/i })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: /chatbot/i })).toBeInTheDocument();
+    expect(
+      screen.queryByRole("link", { name: /^upload$/i }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("link", { name: /^verify$/i }),
+    ).not.toBeInTheDocument();
     expect(
       screen.getByRole("region", { name: /page body/i }),
     ).toBeInTheDocument();

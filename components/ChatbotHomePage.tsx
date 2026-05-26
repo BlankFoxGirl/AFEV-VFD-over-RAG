@@ -18,9 +18,9 @@ export type Message = {
 };
 
 const MODULE_LINKS = [
-  { href: "/upload", label: "Upload Documents" },
   { href: "/extract", label: "Extract Facts" },
-  { href: "/verify", label: "Verify Facts" },
+  { href: "/facts", label: "Browse Facts" },
+  { href: "/fact-verification", label: "Verify Facts" },
 ] as const;
 
 function createUserMessage(content: string): Message {

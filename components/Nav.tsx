@@ -5,10 +5,8 @@ import { useState } from "react";
 import styles from "@/styles/Nav.module.css";
 
 const NAV_LINKS = [
-  { href: "/upload", label: "Upload" },
   { href: "/extract", label: "Extract" },
   { href: "/facts", label: "Facts" },
-  { href: "/verify", label: "Verify" },
   { href: "/fact-verification", label: "Fact Verification" },
   { href: "/", label: "Chatbot" },
 ] as const;
