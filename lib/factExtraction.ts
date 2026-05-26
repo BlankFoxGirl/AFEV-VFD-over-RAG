@@ -53,3 +53,7 @@ export function extractFacts(
         : [],
     );
 }
+
+export function extractClaimsFromText(content: string): string[] {
+  return extractFacts(content, "").map((f) => f.text);
+}

@@ -7,7 +7,7 @@ jest.mock("@/lib/verification", () => ({
   classifyFact: jest.fn(),
 }));
 
-import { fetchVerifiedFactTexts, resolveVerificationStatus } from "@/lib/factVerificationService";
+import { fetchVerifiedFactTexts, resolveVerificationStatus, verifyExtractedClaims } from "@/lib/factVerificationService";
 import VerifiedFact from "@/lib/models/VerifiedFact";
 import { findBestMatch, classifyFact } from "@/lib/verification";
 
@@ -42,6 +42,49 @@ describe("fetchVerifiedFactTexts", () => {
     setupMockFacts([]);
     await fetchVerifiedFactTexts();
     expect(mockFind).toHaveBeenCalledWith({}, { text: 1 });
+  });
+});
+
+describe("verifyExtractedClaims", () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
+  it("returns unverified immediately when claims array is empty without querying the database", async () => {
+    const result = await verifyExtractedClaims([]);
+    expect(result.status).toBe("unverified");
+    expect(result.matchedFact).toBeNull();
+    expect(mockFind).not.toHaveBeenCalled();
+  });
+
+  it("returns unverified status with zero similarity for empty claims", async () => {
+    const result = await verifyExtractedClaims([]);
+    expect(result.similarity).toBe(0);
+  });
+
+  it("queries the database and returns verified status for matching claims", async () => {
+    setupMockFacts(["water boils at 100 degrees celsius"]);
+    mockFindBestMatch.mockReturnValue({ similarity: 1, matchedFact: "water boils at 100 degrees celsius" });
+    mockClassifyFact.mockReturnValue("verified");
+
+    const result = await verifyExtractedClaims(["water boils at 100 degrees celsius"]);
+
+    expect(result.status).toBe("verified");
+    expect(result.similarity).toBe(1);
+    expect(mockFind).toHaveBeenCalled();
+  });
+
+  it("selects the claim with the highest similarity score", async () => {
+    setupMockFacts(["water boils at 100 degrees celsius"]);
+    mockFindBestMatch
+      .mockReturnValueOnce({ similarity: 0.1, matchedFact: null })
+      .mockReturnValueOnce({ similarity: 0.9, matchedFact: "water boils at 100 degrees celsius" });
+    mockClassifyFact.mockReturnValue("verified");
+
+    const result = await verifyExtractedClaims(["unrelated claim", "water boils at 100 degrees celsius"]);
+
+    expect(result.similarity).toBe(0.9);
+    expect(result.matchedFact).toBe("water boils at 100 degrees celsius");
   });
 });
 
