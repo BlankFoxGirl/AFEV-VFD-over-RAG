@@ -41,7 +41,7 @@ async function saveAndReturnFacts(
   content: string,
   documentName: string,
 ): Promise<ExtractedFactResponse[]> {
-  const extractedFacts = extractFacts(content, documentId);
+  const extractedFacts = await extractFacts(content, documentId);
   const saved = await Fact.insertMany(
     extractedFacts.map((fact) => ({ ...fact, documentName })),
   );

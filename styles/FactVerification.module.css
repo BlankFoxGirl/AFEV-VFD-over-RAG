@@ -135,3 +135,21 @@
   margin: 0;
   padding: 0.25rem 0;
 }
+
+.removeButton {
+  font-size: 0.78rem;
+  font-weight: 600;
+  padding: 0.3rem 0.75rem;
+  border: 1px solid rgba(220, 38, 38, 0.4);
+  border-radius: 6px;
+  background: transparent;
+  color: #dc2626;
+  cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease;
+  white-space: nowrap;
+}
+
+.removeButton:hover {
+  background: rgba(220, 38, 38, 0.08);
+  border-color: #dc2626;
+}

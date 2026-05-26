@@ -1,6 +1,10 @@
 jest.mock("@/lib/factVerificationService", () => ({
-  resolveVerificationStatus: jest.fn(),
+  verifyExtractedClaims: jest.fn(),
   fetchVerifiedFactTexts: jest.fn(),
+}));
+
+jest.mock("@/lib/factExtraction", () => ({
+  extractClaimsFromText: jest.fn(),
 }));
 
 jest.mock("@/lib/openaiClient", () => ({
@@ -21,11 +25,13 @@ import {
   buildSystemPrompt,
   processMessage,
 } from "@/lib/chatbotService";
-import { resolveVerificationStatus, fetchVerifiedFactTexts } from "@/lib/factVerificationService";
+import { verifyExtractedClaims, fetchVerifiedFactTexts } from "@/lib/factVerificationService";
+import { extractClaimsFromText } from "@/lib/factExtraction";
 import { fetchChatCompletion } from "@/lib/openaiClient";
 import { generateEmbeddingContext } from "@/lib/embeddingService";
 
-const mockResolveVerificationStatus = resolveVerificationStatus as jest.Mock;
+const mockVerifyExtractedClaims = verifyExtractedClaims as jest.Mock;
+const mockExtractClaimsFromText = extractClaimsFromText as jest.Mock;
 const mockFetchVerifiedFactTexts = fetchVerifiedFactTexts as jest.Mock;
 const mockFetchChatCompletion = fetchChatCompletion as jest.Mock;
 const mockGenerateEmbeddingContext = generateEmbeddingContext as jest.Mock;
@@ -100,16 +106,17 @@ describe("processMessage", () => {
     jest.clearAllMocks();
   });
 
-  function setupVerification(status: string) {
-    mockResolveVerificationStatus.mockResolvedValue({
+  function setupVerification(status: string, matchedFact: string | null = null) {
+    mockVerifyExtractedClaims.mockResolvedValue({
       status,
-      similarity: 1,
-      matchedFact: null,
+      similarity: status === "verified" ? 1 : 0,
+      matchedFact,
     });
   }
 
-  it("returns reply from ChatGPT with [Verified] flag when verification is verified", async () => {
-    setupVerification("verified");
+  it("returns reply from ChatGPT with [Verified] flag when a claim matches a verified fact", async () => {
+    mockExtractClaimsFromText.mockReturnValue(["Water is the molecule H2O."]);
+    setupVerification("verified", "water is H2O");
     mockFetchVerifiedFactTexts.mockResolvedValue(["water is H2O"]);
     mockGenerateEmbeddingContext.mockResolvedValue("Verified facts for context:\nwater is H2O");
     mockFetchChatCompletion.mockResolvedValue("Water is the molecule H2O.");
@@ -121,20 +128,23 @@ describe("processMessage", () => {
     expect(result.verificationStatus).toBe("verified");
   });
 
-  it("returns ChatGPT reply with [Unverified] flag when verification is unverified", async () => {
-    setupVerification("unverified");
+  it("returns ChatGPT reply without a flag when no extracted claim matches", async () => {
+    mockExtractClaimsFromText.mockReturnValue([]);
+    setupVerification("none");
     mockFetchVerifiedFactTexts.mockResolvedValue([]);
     mockGenerateEmbeddingContext.mockResolvedValue("");
     mockFetchChatCompletion.mockResolvedValue("I am not sure about that claim.");
 
     const result = await processMessage("unknown claim");
 
-    expect(result.reply).toContain("[Unverified]");
-    expect(result.verificationStatus).toBe("unverified");
+    expect(result.reply).not.toContain("[Unverified]");
+    expect(result.reply).not.toContain("[Verified]");
+    expect(result.verificationStatus).toBe("none");
   });
 
   it("falls back to buildBaseReply when ChatGPT throws an error", async () => {
-    setupVerification("unverified");
+    mockExtractClaimsFromText.mockReturnValue([]);
+    setupVerification("none");
     mockFetchVerifiedFactTexts.mockResolvedValue([]);
     mockGenerateEmbeddingContext.mockResolvedValue("");
     mockFetchChatCompletion.mockRejectedValue(new Error("API rate limit"));
@@ -146,7 +156,8 @@ describe("processMessage", () => {
   });
 
   it("calls fetchVerifiedFactTexts to build embedding context", async () => {
-    setupVerification("verified");
+    mockExtractClaimsFromText.mockReturnValue(["Yes, the sun is a star."]);
+    setupVerification("verified", "the sun is a star");
     mockFetchVerifiedFactTexts.mockResolvedValue(["the sun is a star"]);
     mockGenerateEmbeddingContext.mockResolvedValue("Verified facts for context:\nthe sun is a star");
     mockFetchChatCompletion.mockResolvedValue("Yes, the sun is a star.");
@@ -157,7 +168,8 @@ describe("processMessage", () => {
   });
 
   it("returns both reply and verificationStatus fields", async () => {
-    setupVerification("unverified");
+    mockExtractClaimsFromText.mockReturnValue([]);
+    setupVerification("none");
     mockFetchVerifiedFactTexts.mockResolvedValue([]);
     mockGenerateEmbeddingContext.mockResolvedValue("");
     mockFetchChatCompletion.mockResolvedValue("Some reply.");
@@ -169,7 +181,8 @@ describe("processMessage", () => {
   });
 
   it("passes the embedding context to ChatGPT for contextual responses", async () => {
-    setupVerification("verified");
+    mockExtractClaimsFromText.mockReturnValue(["Mars is indeed the fourth planet."]);
+    setupVerification("verified", "Mars is the fourth planet");
     const facts = ["Mars is the fourth planet"];
     const embeddingContext = "Verified facts for context:\nMars is the fourth planet";
     mockFetchVerifiedFactTexts.mockResolvedValue(facts);
@@ -179,5 +192,20 @@ describe("processMessage", () => {
     await processMessage("Tell me about Mars.");
 
     expect(mockGenerateEmbeddingContext).toHaveBeenCalledWith("Tell me about Mars.", facts);
+  });
+
+  it("extracts claims from the LLM reply and passes them to verifyExtractedClaims", async () => {
+    const reply = "Water is H2O. It boils at 100 degrees celsius.";
+    const claims = ["Water is H2O.", "It boils at 100 degrees celsius."];
+    mockExtractClaimsFromText.mockReturnValue(claims);
+    setupVerification("verified", "water is H2O");
+    mockFetchVerifiedFactTexts.mockResolvedValue(["water is H2O"]);
+    mockGenerateEmbeddingContext.mockResolvedValue("");
+    mockFetchChatCompletion.mockResolvedValue(reply);
+
+    await processMessage("What is water?");
+
+    expect(mockExtractClaimsFromText).toHaveBeenCalledWith(reply);
+    expect(mockVerifyExtractedClaims).toHaveBeenCalledWith(claims);
   });
 });

@@ -45,7 +45,7 @@ export async function processUploadedDocument(
   content: string,
 ): Promise<DocumentProcessingResult> {
   await connectToDatabase();
-  const facts = extractFacts(content, documentId);
+  const facts = await extractFacts(content, documentId);
   await persistExtractedFacts(facts, documentName);
   const verificationSummary = await buildVerificationSummary(facts);
   return { factCount: facts.length, verificationSummary };

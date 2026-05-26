@@ -1,70 +1,111 @@
-import { extractFacts } from "@/lib/factExtraction";
+import { extractFacts, extractClaimsFromText } from "@/lib/factExtraction";
+import * as openaiClient from "@/lib/openaiClient";
+
+jest.mock("@/lib/openaiClient");
+
+const mockFetchChatCompletion = openaiClient.fetchChatCompletion as jest.MockedFunction<
+  typeof openaiClient.fetchChatCompletion
+>;
 
 const DOCUMENT_ID = "doc-001";
 
 describe("extractFacts", () => {
-  it("returns an empty array for empty content", () => {
-    expect(extractFacts("", DOCUMENT_ID)).toEqual([]);
+  beforeEach(() => {
+    jest.clearAllMocks();
   });
 
-  it("returns an empty array when no factual sentences are found", () => {
-    const content = "Hello there. How are you doing? Nice to meet you.";
-    expect(extractFacts(content, DOCUMENT_ID)).toEqual([]);
+  it("returns an empty array for empty content", async () => {
+    const result = await extractFacts("", DOCUMENT_ID);
+    expect(result).toEqual([]);
+    expect(mockFetchChatCompletion).not.toHaveBeenCalled();
   });
 
-  it("extracts sentences containing numbers as facts", () => {
-    const content = "The population is 8 billion people. That is a lot.";
-    const facts = extractFacts(content, DOCUMENT_ID);
-    expect(facts.length).toBeGreaterThan(0);
-    expect(facts[0].text).toBe("The population is 8 billion people.");
+  it("returns an empty array for whitespace-only content", async () => {
+    const result = await extractFacts("   \n  ", DOCUMENT_ID);
+    expect(result).toEqual([]);
+    expect(mockFetchChatCompletion).not.toHaveBeenCalled();
   });
 
-  it("assigns the documentId to each extracted fact", () => {
-    const content = "The company was founded in 1994.";
-    const facts = extractFacts(content, DOCUMENT_ID);
-    facts.forEach((fact) => expect(fact.documentId).toBe(DOCUMENT_ID));
+  it("returns an empty array when the LLM returns an empty response", async () => {
+    mockFetchChatCompletion.mockResolvedValue("");
+    const result = await extractFacts("Some document content.", DOCUMENT_ID);
+    expect(result).toEqual([]);
   });
 
-  it("includes context with surrounding sentences", () => {
-    const content =
-      "Intro sentence. The river is 300 miles long. Concluding sentence.";
-    const facts = extractFacts(content, DOCUMENT_ID);
-    expect(facts[0].context).toContain("Intro sentence");
-    expect(facts[0].context).toContain("The river is 300 miles long.");
-    expect(facts[0].context).toContain("Concluding sentence");
+  it("returns an empty array when the LLM returns only blank lines", async () => {
+    mockFetchChatCompletion.mockResolvedValue("\n\n\n");
+    const result = await extractFacts("Some document content.", DOCUMENT_ID);
+    expect(result).toEqual([]);
   });
 
-  it("sets context to just the target sentence when it is the only sentence", () => {
-    const content = "The library contains 2 million books.";
-    const facts = extractFacts(content, DOCUMENT_ID);
-    expect(facts[0].context).toBe("The library contains 2 million books.");
+  it("parses a single claim from the LLM response", async () => {
+    mockFetchChatCompletion.mockResolvedValue("The company was founded in 1994.");
+    const result = await extractFacts("Some document.", DOCUMENT_ID);
+    expect(result).toHaveLength(1);
+    expect(result[0].text).toBe("The company was founded in 1994.");
   });
 
-  it("extracts facts from sentences using 'is/are/was/were' patterns", () => {
-    const content = "Water is composed of hydrogen and oxygen.";
-    const facts = extractFacts(content, DOCUMENT_ID);
-    expect(facts.length).toBe(1);
-    expect(facts[0].text).toBe(content);
+  it("parses multiple claims from a multi-line LLM response", async () => {
+    mockFetchChatCompletion.mockResolvedValue(
+      "The company was founded in 1994.\nIt employs 10,000 people.\nHeadquarters are in Berlin.",
+    );
+    const result = await extractFacts("Some document.", DOCUMENT_ID);
+    expect(result).toHaveLength(3);
+    expect(result[0].text).toBe("The company was founded in 1994.");
+    expect(result[1].text).toBe("It employs 10,000 people.");
+    expect(result[2].text).toBe("Headquarters are in Berlin.");
   });
 
-  it("extracts facts from sentences using 'founded/created' patterns", () => {
-    const content = "The organization was established in Berlin.";
-    const facts = extractFacts(content, DOCUMENT_ID);
-    expect(facts.length).toBe(1);
+  it("trims whitespace from each parsed claim", async () => {
+    mockFetchChatCompletion.mockResolvedValue("  The river is 300 miles long.  ");
+    const result = await extractFacts("Some document.", DOCUMENT_ID);
+    expect(result[0].text).toBe("The river is 300 miles long.");
   });
 
-  it("extracts multiple facts from multi-sentence content", () => {
-    const content =
-      "The university was founded in 1856. It currently has 30,000 students. Many enjoy the campus.";
-    const facts = extractFacts(content, DOCUMENT_ID);
-    expect(facts.length).toBeGreaterThanOrEqual(2);
+  it("assigns documentId to each extracted claim", async () => {
+    mockFetchChatCompletion.mockResolvedValue("Claim one.\nClaim two.");
+    const result = await extractFacts("Some document.", DOCUMENT_ID);
+    result.forEach((fact) => expect(fact.documentId).toBe(DOCUMENT_ID));
   });
 
-  it("returns facts with text, context, and documentId fields", () => {
-    const content = "The bridge was built in 1920.";
-    const facts = extractFacts(content, DOCUMENT_ID);
-    expect(facts[0]).toHaveProperty("text");
-    expect(facts[0]).toHaveProperty("context");
-    expect(facts[0]).toHaveProperty("documentId");
+  it("sets context to the document content", async () => {
+    mockFetchChatCompletion.mockResolvedValue("A claim.");
+    const content = "The document body.";
+    const result = await extractFacts(content, DOCUMENT_ID);
+    expect(result[0].context).toBe(content);
+  });
+
+  it("truncates context when document content exceeds the maximum length", async () => {
+    mockFetchChatCompletion.mockResolvedValue("A claim.");
+    const longContent = "x".repeat(3000);
+    const result = await extractFacts(longContent, DOCUMENT_ID);
+    expect(result[0].context.length).toBeLessThan(longContent.length);
+    expect(result[0].context.endsWith("...")).toBe(true);
+  });
+
+  it("returns facts with text, context, and documentId fields", async () => {
+    mockFetchChatCompletion.mockResolvedValue("The bridge was built in 1920.");
+    const result = await extractFacts("Some document.", DOCUMENT_ID);
+    expect(result[0]).toHaveProperty("text");
+    expect(result[0]).toHaveProperty("context");
+    expect(result[0]).toHaveProperty("documentId");
+  });
+});
+
+describe("extractClaimsFromText", () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
+  it("returns an array of claim strings", async () => {
+    mockFetchChatCompletion.mockResolvedValue("Claim one.\nClaim two.");
+    const result = await extractClaimsFromText("Some text.");
+    expect(result).toEqual(["Claim one.", "Claim two."]);
+  });
+
+  it("returns an empty array when there are no claims", async () => {
+    mockFetchChatCompletion.mockResolvedValue("");
+    const result = await extractClaimsFromText("Some text.");
+    expect(result).toEqual([]);
   });
 });

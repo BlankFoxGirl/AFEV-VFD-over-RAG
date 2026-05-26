@@ -93,12 +93,12 @@ describe("classifyFact", () => {
     expect(classifyFact(0.8)).toBe("verified");
   });
 
-  it("returns 'unverified' when similarity is below the threshold", () => {
-    expect(classifyFact(0.1)).toBe("unverified");
+  it("returns 'none' when similarity is below the threshold", () => {
+    expect(classifyFact(0.1)).toBe("none");
   });
 
-  it("returns 'unverified' for zero similarity", () => {
-    expect(classifyFact(0)).toBe("unverified");
+  it("returns 'none' for zero similarity", () => {
+    expect(classifyFact(0)).toBe("none");
   });
 
   it("returns 'verified' for perfect similarity", () => {

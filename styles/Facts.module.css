@@ -127,3 +127,27 @@
   font-style: italic;
   padding: 1rem 0;
 }
+
+.factCardFooter {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 0.4rem;
+}
+
+.deleteButton {
+  font-size: 0.7rem;
+  padding: 0.2rem 0.5rem;
+  border-radius: 4px;
+  border: 1px solid rgba(220, 38, 38, 0.4);
+  background: transparent;
+  color: #dc2626;
+  cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease;
+  flex-shrink: 0;
+}
+
+.deleteButton:hover {
+  background: rgba(220, 38, 38, 0.08);
+  border-color: #dc2626;
+}

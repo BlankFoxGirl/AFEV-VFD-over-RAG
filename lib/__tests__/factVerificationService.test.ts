@@ -50,14 +50,14 @@ describe("verifyExtractedClaims", () => {
     jest.clearAllMocks();
   });
 
-  it("returns unverified immediately when claims array is empty without querying the database", async () => {
+  it("returns none immediately when claims array is empty without querying the database", async () => {
     const result = await verifyExtractedClaims([]);
-    expect(result.status).toBe("unverified");
+    expect(result.status).toBe("none");
     expect(result.matchedFact).toBeNull();
     expect(mockFind).not.toHaveBeenCalled();
   });
 
-  it("returns unverified status with zero similarity for empty claims", async () => {
+  it("returns none status with zero similarity for empty claims", async () => {
     const result = await verifyExtractedClaims([]);
     expect(result.similarity).toBe(0);
   });
@@ -105,14 +105,14 @@ describe("resolveVerificationStatus", () => {
     expect(result.matchedFact).toBe("water boils at 100 degrees celsius");
   });
 
-  it("returns unverified status when no match is found", async () => {
+  it("returns none status when no match is found", async () => {
     setupMockFacts(["the eiffel tower is in paris"]);
     mockFindBestMatch.mockReturnValue({ similarity: 0, matchedFact: null });
-    mockClassifyFact.mockReturnValue("unverified");
+    mockClassifyFact.mockReturnValue("none");
 
     const result = await resolveVerificationStatus("unknown text");
 
-    expect(result.status).toBe("unverified");
+    expect(result.status).toBe("none");
     expect(result.similarity).toBe(0);
     expect(result.matchedFact).toBeNull();
   });
@@ -131,7 +131,7 @@ describe("resolveVerificationStatus", () => {
   it("returns result with status, similarity, and matchedFact fields", async () => {
     setupMockFacts([]);
     mockFindBestMatch.mockReturnValue({ similarity: 0, matchedFact: null });
-    mockClassifyFact.mockReturnValue("unverified");
+    mockClassifyFact.mockReturnValue("none");
 
     const result = await resolveVerificationStatus("any text");
 

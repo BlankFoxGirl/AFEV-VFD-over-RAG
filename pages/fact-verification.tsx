@@ -1,6 +1,6 @@
 import Head from "next/head";
 import { useEffect, useState, useCallback } from "react";
-import { fetchFacts, verifyFact } from "@/lib/apiClient";
+import { fetchFacts, addVerifiedFact, deleteVerifiedFact } from "@/lib/apiClient";
 import type { FactWithAnnotations } from "@/lib/contexts/FactsContext";
 import type { VerificationStatus } from "@/lib/verification";
 import VerificationBadge from "@/components/VerificationBadge";
@@ -42,9 +42,10 @@ type FactCardProps = {
   status: VerificationStatus;
   error: string | null;
   onVerify: (fact: FactWithAnnotations) => void;
+  onRemove: (fact: FactWithAnnotations) => void;
 };
 
-function VerificationFactCard({ fact, status, error, onVerify }: FactCardProps) {
+function VerificationFactCard({ fact, status, error, onVerify, onRemove }: FactCardProps) {
   const isChecking = status === "checking";
 
   return (
@@ -62,14 +63,25 @@ function VerificationFactCard({ fact, status, error, onVerify }: FactCardProps) 
       )}
       <div className={styles.factCardFooter}>
         <VerificationBadge status={status} />
-        <button
-          className={styles.verifyButton}
-          onClick={() => onVerify(fact)}
-          disabled={isChecking}
-          aria-label={`Verify fact: ${fact.text}`}
-        >
-          {isChecking ? "Verifying…" : "Verify"}
-        </button>
+        <div style={{ display: "flex", gap: "0.5rem" }}>
+          {status === "verified" && (
+            <button
+              className={styles.removeButton}
+              onClick={() => onRemove(fact)}
+              aria-label={`Remove from corpus: ${fact.text}`}
+            >
+              Remove
+            </button>
+          )}
+          <button
+            className={styles.verifyButton}
+            onClick={() => onVerify(fact)}
+            disabled={isChecking}
+            aria-label={`Verify fact: ${fact.text}`}
+          >
+            {isChecking ? "Verifying…" : "Verify"}
+          </button>
+        </div>
       </div>
     </article>
   );
@@ -80,9 +92,10 @@ type FactsGridContentProps = {
   statuses: FactStatusMap;
   errors: FactErrorMap;
   onVerify: (fact: FactWithAnnotations) => void;
+  onRemove: (fact: FactWithAnnotations) => void;
 };
 
-function FactsGridContent({ facts, statuses, errors, onVerify }: FactsGridContentProps) {
+function FactsGridContent({ facts, statuses, errors, onVerify, onRemove }: FactsGridContentProps) {
   if (facts.length === 0) {
     return <FactsListPlaceholder />;
   }
@@ -95,6 +108,7 @@ function FactsGridContent({ facts, statuses, errors, onVerify }: FactsGridConten
           status={statuses[fact.id] ?? "none"}
           error={errors[fact.id] ?? null}
           onVerify={onVerify}
+          onRemove={onRemove}
         />
       ))}
     </>
@@ -135,13 +149,29 @@ export default function FactVerificationPage() {
       setFactStatus(fact.id, "checking");
       setFactError(fact.id, null);
       try {
-        const result = await verifyFact(fact.text);
-        setFactStatus(fact.id, result.status as VerificationStatus);
+        await addVerifiedFact(fact.text);
+        setFactStatus(fact.id, "verified");
       } catch (err) {
         const message =
           err instanceof Error ? err.message : "Verification failed. Please try again.";
         setFactError(fact.id, message);
         setFactStatus(fact.id, "none");
+      }
+    },
+    [setFactStatus, setFactError],
+  );
+
+  const handleRemoveFact = useCallback(
+    async (fact: FactWithAnnotations) => {
+      if (!window.confirm(`Remove from verified corpus?\n\n"${fact.text}"`)) return;
+      try {
+        await deleteVerifiedFact(fact.text);
+        setFactStatus(fact.id, "none");
+        setFactError(fact.id, null);
+      } catch (err) {
+        const message =
+          err instanceof Error ? err.message : "Failed to remove from corpus.";
+        setFactError(fact.id, message);
       }
     },
     [setFactStatus, setFactError],
@@ -172,6 +202,7 @@ export default function FactVerificationPage() {
               statuses={factStatuses}
               errors={factErrors}
               onVerify={handleVerifyFact}
+              onRemove={handleRemoveFact}
             />
           )}
         </div>

@@ -46,8 +46,8 @@ export function findBestMatch(factText: string, verifiedFacts: string[]): MatchR
   return { similarity: bestSimilarity, matchedFact: bestMatch };
 }
 
-export function classifyFact(similarity: number): "verified" | "unverified" {
-  return similarity >= SIMILARITY_THRESHOLD ? "verified" : "unverified";
+export function classifyFact(similarity: number): VerificationStatus {
+  return similarity >= SIMILARITY_THRESHOLD ? "verified" : "none";
 }
 
 export function evaluateVerificationStatus(text: string): VerificationStatus {

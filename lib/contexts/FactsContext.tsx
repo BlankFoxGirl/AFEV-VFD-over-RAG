@@ -32,7 +32,8 @@ type FactsAction =
   | { type: "LOADING" }
   | { type: "LOADED"; facts: FactWithAnnotations[] }
   | { type: "ERROR"; message: string }
-  | { type: "UPDATE_FACT"; fact: FactWithAnnotations };
+  | { type: "UPDATE_FACT"; fact: FactWithAnnotations }
+  | { type: "REMOVE_FACT"; id: string };
 
 function factsReducer(state: FactsState, action: FactsAction): FactsState {
   switch (action.type) {
@@ -49,6 +50,11 @@ function factsReducer(state: FactsState, action: FactsAction): FactsState {
           f.id === action.fact.id ? action.fact : f,
         ),
       };
+    case "REMOVE_FACT":
+      return {
+        ...state,
+        facts: state.facts.filter((f) => f.id !== action.id),
+      };
   }
 }
 
@@ -56,6 +62,7 @@ type FactsContextValue = {
   state: FactsState;
   loadFacts: (documentId?: string) => Promise<void>;
   updateFact: (fact: FactWithAnnotations) => void;
+  deleteFact: (id: string) => Promise<void>;
 };
 
 const FactsContext = createContext<FactsContextValue | null>(null);
@@ -92,8 +99,16 @@ export function FactsProvider({ children }: { children: ReactNode }) {
     dispatch({ type: "UPDATE_FACT", fact });
   }
 
+  async function deleteFact(id: string): Promise<void> {
+    const response = await fetch(`/api/facts/${id}`, { method: "DELETE" });
+    if (!response.ok && response.status !== 204) {
+      throw new Error("Failed to delete fact");
+    }
+    dispatch({ type: "REMOVE_FACT", id });
+  }
+
   return (
-    <FactsContext.Provider value={{ state, loadFacts, updateFact }}>
+    <FactsContext.Provider value={{ state, loadFacts, updateFact, deleteFact }}>
       {children}
     </FactsContext.Provider>
   );

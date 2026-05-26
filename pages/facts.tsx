@@ -9,26 +9,45 @@ function FactCard({
   fact,
   isSelected,
   onSelect,
+  onDelete,
 }: {
   fact: FactWithAnnotations;
   isSelected: boolean;
   onSelect: (fact: FactWithAnnotations) => void;
+  onDelete: (fact: FactWithAnnotations) => void;
 }) {
   return (
     <li>
-      <button
+      <div
         className={`${styles.factCard} ${isSelected ? styles.selected : ""}`}
         onClick={() => onSelect(fact)}
+        role="button"
+        tabIndex={0}
         aria-pressed={isSelected}
         aria-label={`Select fact: ${fact.text}`}
+        onKeyDown={(e) => {
+          if (e.key === "Enter" || e.key === " ") onSelect(fact);
+        }}
       >
         <p className={styles.factCardText}>{fact.text}</p>
         <p className={styles.factCardMeta}>{fact.documentName}</p>
-        <p className={styles.annotationCount}>
-          {fact.annotations.length} annotation
-          {fact.annotations.length !== 1 ? "s" : ""}
-        </p>
-      </button>
+        <div className={styles.factCardFooter}>
+          <p className={styles.annotationCount}>
+            {fact.annotations.length} annotation
+            {fact.annotations.length !== 1 ? "s" : ""}
+          </p>
+          <button
+            className={styles.deleteButton}
+            onClick={(e) => {
+              e.stopPropagation();
+              onDelete(fact);
+            }}
+            aria-label={`Delete fact: ${fact.text}`}
+          >
+            Delete
+          </button>
+        </div>
+      </div>
     </li>
   );
 }
@@ -37,10 +56,12 @@ function FactsSidebar({
   facts,
   selectedFactId,
   onSelect,
+  onDelete,
 }: {
   facts: FactWithAnnotations[];
   selectedFactId: string | null;
   onSelect: (fact: FactWithAnnotations) => void;
+  onDelete: (fact: FactWithAnnotations) => void;
 }) {
   if (facts.length === 0) {
     return (
@@ -58,6 +79,7 @@ function FactsSidebar({
           fact={fact}
           isSelected={selectedFactId === fact.id}
           onSelect={onSelect}
+          onDelete={onDelete}
         />
       ))}
     </ul>
@@ -65,7 +87,7 @@ function FactsSidebar({
 }
 
 function FactsContent() {
-  const { state, loadFacts, updateFact } = useFacts();
+  const { state, loadFacts, updateFact, deleteFact } = useFacts();
   const [selectedFact, setSelectedFact] = useState<FactWithAnnotations | null>(
     null,
   );
@@ -81,6 +103,14 @@ function FactsContent() {
   function handleAnnotationSaved(updatedFact: FactWithAnnotations) {
     updateFact(updatedFact);
     setSelectedFact(updatedFact);
+  }
+
+  async function handleFactDelete(fact: FactWithAnnotations) {
+    if (!window.confirm(`Delete this fact?\n\n"${fact.text}"`)) return;
+    await deleteFact(fact.id);
+    if (selectedFact?.id === fact.id) {
+      setSelectedFact(null);
+    }
   }
 
   const currentSelectedFact = selectedFact
@@ -108,6 +138,7 @@ function FactsContent() {
             facts={state.facts}
             selectedFactId={currentSelectedFact?.id ?? null}
             onSelect={handleFactSelect}
+            onDelete={handleFactDelete}
           />
         )}
       </aside>
